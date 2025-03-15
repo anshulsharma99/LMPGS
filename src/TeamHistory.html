@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+      }
+      .filters {
+        margin-bottom: 20px;
+        padding: 15px;
+        background-color: #f8f9fa;
+        border-radius: 4px;
+      }
+      .filter-group {
+        display: inline-block;
+        margin-right: 20px;
+      }
+      label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+      }
+      select, input[type="date"] {
+        padding: 6px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+      }
+      th, td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+      }
+      th {
+        background-color: #f5f5f5;
+        font-weight: bold;
+      }
+      tr:hover {
+        background-color: #f9f9f9;
+      }
+      .status {
+        padding: 5px 10px;
+        border-radius: 4px;
+        font-weight: bold;
+      }
+      .status-pending {
+        background-color: #fff3cd;
+        color: #856404;
+      }
+      .status-approved {
+        background-color: #d4edda;
+        color: #155724;
+      }
+      .status-rejected {
+        background-color: #f8d7da;
+        color: #721c24;
+      }
+      .status-review {
+        background-color: #cce5ff;
+        color: #004085;
+      }
+      .no-requests {
+        text-align: center;
+        padding: 20px;
+        color: #666;
+        font-style: italic;
+      }
+      .summary {
+        margin-top: 20px;
+        padding: 15px;
+        background-color: #e9ecef;
+        border-radius: 4px;
+      }
+      .summary h3 {
+        margin-top: 0;
+        color: #495057;
+      }
+      .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-top: 10px;
+      }
+      .summary-item {
+        padding: 10px;
+        background-color: white;
+        border-radius: 4px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      }
+      .summary-item strong {
+        display: block;
+        font-size: 1.2em;
+        color: #007bff;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Filters -->
+    <div class="filters">
+      <div class="filter-group">
+        <label for="employeeFilter">Employee:</label>
+        <select id="employeeFilter" onchange="applyFilters()">
+          <option value="">All Employees</option>
+          <? for (var i = 0; i < employees.length; i++) { ?>
+            <option value="<?= employees[i] ?>"><?= employees[i] ?></option>
+          <? } ?>
+        </select>
+      </div>
+      
+      <div class="filter-group">
+        <label for="statusFilter">Status:</label>
+        <select id="statusFilter" onchange="applyFilters()">
+          <option value="">All Statuses</option>
+          <option value="Pending">Pending</option>
+          <option value="In Review">In Review</option>
+          <option value="Approved">Approved</option>
+          <option value="Rejected">Rejected</option>
+        </select>
+      </div>
+      
+      <div class="filter-group">
+        <label for="startDate">From:</label>
+        <input type="date" id="startDate" onchange="applyFilters()">
+      </div>
+      
+      <div class="filter-group">
+        <label for="endDate">To:</label>
+        <input type="date" id="endDate" onchange="applyFilters()">
+      </div>
+    </div>
+
+    <!-- Team Summary -->
+    <div class="summary">
+      <h3>Team Leave Summary</h3>
+      <div class="summary-grid">
+        <div class="summary-item">
+          <strong><?= summary.totalRequests ?></strong>
+          Total Requests
+        </div>
+        <div class="summary-item">
+          <strong><?= summary.pendingRequests ?></strong>
+          Pending Requests
+        </div>
+        <div class="summary-item">
+          <strong><?= summary.approvedRequests ?></strong>
+          Approved Requests
+        </div>
+        <div class="summary-item">
+          <strong><?= summary.rejectedRequests ?></strong>
+          Rejected Requests
+        </div>
+      </div>
+    </div>
+
+    <!-- Leave Requests Table -->
+    <? if (requests.length <= 1) { ?>
+      <div class="no-requests">No leave requests found</div>
+    <? } else { ?>
+      <table id="requestsTable">
+        <thead>
+          <tr>
+            <th>Leave ID</th>
+            <th>Employee</th>
+            <th>Type</th>
+            <th>Start Date</th>
+            <th>End Date</th>
+            <th>Status</th>
+            <th>Submission Date</th>
+            <th>Decision Date</th>
+            <th>Comments</th>
+          </tr>
+        </thead>
+        <tbody>
+          <? for (var i = 1; i < requests.length; i++) { ?>
+            <tr>
+              <td><?= requests[i][0] ?></td>
+              <td><?= requests[i][1] ?></td>
+              <td><?= requests[i][4] ?></td>
+              <td><?= formatDate(requests[i][5]) ?></td>
+              <td><?= formatDate(requests[i][6]) ?></td>
+              <td>
+                <span class="status status-<?= getStatusClass(requests[i][9]) ?>">
+                  <?= requests[i][9] ?>
+                </span>
+              </td>
+              <td><?= formatDate(requests[i][8]) ?></td>
+              <td><?= formatDate(requests[i][11]) || '-' ?></td>
+              <td><?= requests[i][10] || '-' ?></td>
+            </tr>
+          <? } ?>
+        </tbody>
+      </table>
+    <? } ?>
+
+    <script>
+      // Format date for display
+      function formatDate(date) {
+        if (!date) return '-';
+        return new Date(date).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        });
+      }
+      
+      // Get status class for styling
+      function getStatusClass(status) {
+        switch(status.toLowerCase()) {
+          case 'pending':
+            return 'pending';
+          case 'approved':
+            return 'approved';
+          case 'rejected':
+            return 'rejected';
+          case 'in review':
+            return 'review';
+          default:
+            return '';
+        }
+      }
+      
+      // Filter table rows based on selected criteria
+      function applyFilters() {
+        const employee = document.getElementById('employeeFilter').value;
+        const status = document.getElementById('statusFilter').value;
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        
+        const table = document.getElementById('requestsTable');
+        const rows = table.getElementsByTagName('tr');
+        
+        // Skip header row
+        for (let i = 1; i < rows.length; i++) {
+          const row = rows[i];
+          const cells = row.getElementsByTagName('td');
+          
+          let showRow = true;
+          
+          // Employee filter
+          if (employee && cells[1].textContent !== employee) {
+            showRow = false;
+          }
+          
+          // Status filter
+          if (status && cells[5].textContent.trim() !== status) {
+            showRow = false;
+          }
+          
+          // Date range filter
+          if (startDate || endDate) {
+            const rowStartDate = new Date(cells[3].textContent);
+            const rowEndDate = new Date(cells[4].textContent);
+            
+            if (startDate && rowStartDate < new Date(startDate)) {
+              showRow = false;
+            }
+            
+            if (endDate && rowEndDate > new Date(endDate)) {
+              showRow = false;
+            }
+          }
+          
+          row.style.display = showRow ? '' : 'none';
+        }
+      }
+      
+      // Initialize date filters with current month
+      window.onload = function() {
+        const today = new Date();
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+        const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        
+        document.getElementById('startDate').value = firstDay.toISOString().split('T')[0];
+        document.getElementById('endDate').value = lastDay.toISOString().split('T')[0];
+        
+        applyFilters();
+      };
+    </script>
+  </body>
+</html>

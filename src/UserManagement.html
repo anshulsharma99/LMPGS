@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+      }
+      th, td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+      }
+      th {
+        background-color: #f5f5f5;
+        font-weight: bold;
+      }
+      tr:hover {
+        background-color: #f9f9f9;
+      }
+      .btn {
+        padding: 6px 12px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: bold;
+        margin-right: 5px;
+      }
+      .btn-primary {
+        background-color: #007bff;
+        color: white;
+      }
+      .btn-edit {
+        background-color: #ffc107;
+        color: #000;
+      }
+      .btn-delete {
+        background-color: #dc3545;
+        color: white;
+      }
+      .btn:hover {
+        opacity: 0.9;
+      }
+      .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.5);
+      }
+      .modal-content {
+        background-color: white;
+        margin: 10% auto;
+        padding: 20px;
+        width: 60%;
+        border-radius: 5px;
+      }
+      .close {
+        float: right;
+        cursor: pointer;
+        font-size: 24px;
+      }
+      .close:hover {
+        color: #666;
+      }
+      .form-group {
+        margin-bottom: 15px;
+      }
+      label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+      }
+      input[type="email"], input[type="text"], select {
+        width: 100%;
+        padding: 8px;
+        margin-bottom: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+      .checkbox-group {
+        margin-top: 10px;
+      }
+      .checkbox-group label {
+        font-weight: normal;
+        display: inline-block;
+        margin-right: 15px;
+      }
+      .error {
+        color: red;
+        margin-top: 5px;
+        display: none;
+      }
+      .modal-buttons {
+        text-align: right;
+        margin-top: 15px;
+      }
+      .no-users {
+        text-align: center;
+        padding: 20px;
+        color: #666;
+        font-style: italic;
+      }
+    </style>
+  </head>
+  <body>
+    <button class="btn btn-primary" onclick="showAddUserModal()">Add New User</button>
+    
+    <table>
+      <thead>
+        <tr>
+          <th>Email</th>
+          <th>Role</th>
+          <th>Manager</th>
+          <th>Department</th>
+          <th>Allowed Leave Types</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <? if (users.length <= 1) { ?>
+          <tr>
+            <td colspan="6" class="no-users">No users found</td>
+          </tr>
+        <? } else { ?>
+          <? for (var i = 1; i < users.length; i++) { ?>
+            <tr>
+              <td><?= users[i][0] ?></td>
+              <td><?= users[i][1] ?></td>
+              <td><?= users[i][2] || '-' ?></td>
+              <td><?= users[i][3] ?></td>
+              <td><?= users[i][4] ?></td>
+              <td>
+                <button class="btn btn-edit" onclick="showEditUserModal(<?= i ?>)">Edit</button>
+                <button class="btn btn-delete" onclick="confirmDeleteUser('<?= users[i][0] ?>')">Delete</button>
+              </td>
+            </tr>
+          <? } ?>
+        <? } ?>
+      </tbody>
+    </table>
+
+    <!-- User Modal -->
+    <div id="userModal" class="modal">
+      <div class="modal-content">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <h3 id="modalTitle">Add New User</h3>
+        <form id="userForm" onsubmit="handleSubmit(event)">
+          <div class="form-group">
+            <label for="email">Email:</label>
+            <input type="email" id="email" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="role">Role:</label>
+            <select id="role" onchange="handleRoleChange()" required>
+              <option value="">Select Role</option>
+              <option value="Admin">Admin</option>
+              <option value="Manager">Manager</option>
+              <option value="Employee">Employee</option>
+            </select>
+          </div>
+          
+          <div class="form-group" id="managerGroup" style="display: none;">
+            <label for="manager">Manager:</label>
+            <select id="manager">
+              <option value="">Select Manager</option>
+              <? for (var i = 1; i < users.length; i++) { ?>
+                <? if (users[i][1] === 'Manager') { ?>
+                  <option value="<?= users[i][0] ?>"><?= users[i][0] ?></option>
+                <? } ?>
+              <? } ?>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="department">Department:</label>
+            <input type="text" id="department" required>
+          </div>
+          
+          <div class="form-group">
+            <label>Allowed Leave Types:</label>
+            <div class="checkbox-group">
+              <label>
+                <input type="checkbox" name="leaveType" value="SL"> Sick Leave
+              </label>
+              <label>
+                <input type="checkbox" name="leaveType" value="VAC"> Vacation
+              </label>
+              <label>
+                <input type="checkbox" name="leaveType" value="PL"> Personal Leave
+              </label>
+              <label>
+                <input type="checkbox" name="leaveType" value="TL"> Training Leave
+              </label>
+            </div>
+          </div>
+          
+          <div id="error" class="error"></div>
+          
+          <div class="modal-buttons">
+            <button type="button" class="btn btn-delete" onclick="closeModal()">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save</button>
+          </div>
+          
+          <input type="hidden" id="editIndex">
+        </form>
+      </div>
+    </div>
+    
+    <script>
+      // Initialize user data from server
+      var userData = <?= JSON.stringify(users) ?>;
+      
+      function showAddUserModal() {
+        document.getElementById('modalTitle').textContent = 'Add New User';
+        document.getElementById('userForm').reset();
+        document.getElementById('editIndex').value = '';
+        document.getElementById('userModal').style.display = 'block';
+        handleRoleChange();
+      }
+      
+      function showEditUserModal(index) {
+        try {
+          console.log('Editing user at index:', index);
+          var user = userData[index];
+          console.log('User data:', user);
+          
+          document.getElementById('modalTitle').textContent = 'Edit User';
+          document.getElementById('email').value = user[0];
+          document.getElementById('role').value = user[1];
+          document.getElementById('manager').value = user[2] || '';
+          document.getElementById('department').value = user[3];
+          
+          // Set leave types
+          var allowedTypes = user[4] ? user[4].split(',').map(function(type) { return type.trim(); }) : [];
+          console.log('Allowed types:', allowedTypes);
+          document.querySelectorAll('input[name="leaveType"]').forEach(function(checkbox) {
+            checkbox.checked = allowedTypes.includes(checkbox.value);
+          });
+          
+          document.getElementById('editIndex').value = index;
+          document.getElementById('userModal').style.display = 'block';
+          handleRoleChange();
+        } catch (error) {
+          console.error('Error in showEditUserModal:', error);
+          showError('Failed to load user data. Please try again.');
+        }
+      }
+      
+      function handleRoleChange() {
+        var role = document.getElementById('role').value;
+        var managerGroup = document.getElementById('managerGroup');
+        managerGroup.style.display = role === 'Employee' ? 'block' : 'none';
+        document.getElementById('manager').required = role === 'Employee';
+      }
+      
+      function closeModal() {
+        document.getElementById('userModal').style.display = 'none';
+        document.getElementById('error').style.display = 'none';
+      }
+      
+      function handleSubmit(event) {
+        event.preventDefault();
+        
+        try {
+          var editIndex = document.getElementById('editIndex').value;
+          var email = document.getElementById('email').value;
+          var role = document.getElementById('role').value;
+          var manager = document.getElementById('manager').value;
+          var department = document.getElementById('department').value;
+          var leaveTypes = Array.from(document.querySelectorAll('input[name="leaveType"]:checked'))
+            .map(function(cb) { return cb.value; })
+            .join(',');
+            
+          // Validate required fields
+          if (!email || !role || !department) {
+            showError('Please fill in all required fields.');
+            return;
+          }
+          
+          // Validate manager for employees
+          if (role === 'Employee' && !manager) {
+            showError('Manager is required for employees.');
+            return;
+          }
+          
+          var formData = {
+            email: email,
+            role: role,
+            manager: manager,
+            department: department,
+            leaveTypes: leaveTypes,
+            editIndex: editIndex
+          };
+          
+          console.log('Submitting form data:', formData);
+          
+          google.script.run
+            .withSuccessHandler(onSuccess)
+            .withFailureHandler(onFailure)
+            .processUserUpdate(formData);
+            
+        } catch (error) {
+          console.error('Error in handleSubmit:', error);
+          showError('Failed to submit form. Please try again.');
+        }
+      }
+      
+      function confirmDeleteUser(email) {
+        if (confirm('Are you sure you want to delete user ' + email + '?')) {
+          google.script.run
+            .withSuccessHandler(onSuccess)
+            .withFailureHandler(onFailure)
+            .deleteUser(email);
+        }
+      }
+      
+      function onSuccess(response) {
+        if (response.success) {
+          alert(response.message);
+          google.script.host.close();
+        } else {
+          showError(response.message);
+        }
+      }
+      
+      function onFailure(error) {
+        showError('An error occurred. Please try again.');
+      }
+      
+      function showError(message) {
+        var error = document.getElementById('error');
+        error.textContent = message;
+        error.style.display = 'block';
+      }
+      
+      // Close modal when clicking outside
+      window.onclick = function(event) {
+        var modal = document.getElementById('userModal');
+        if (event.target == modal) {
+          closeModal();
+        }
+      }
+    </script>
+  </body>
+</html>

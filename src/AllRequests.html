@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+      }
+      .dashboard {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+      }
+      .stat-card {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        text-align: center;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+      .stat-number {
+        font-size: 24px;
+        font-weight: bold;
+        color: #007bff;
+        margin: 10px 0;
+      }
+      .stat-label {
+        color: #666;
+        font-size: 14px;
+      }
+      .filters {
+        margin-bottom: 20px;
+        padding: 15px;
+        background-color: #f8f9fa;
+        border-radius: 4px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+      }
+      .filter-group {
+        flex: 1;
+        min-width: 200px;
+      }
+      label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+      }
+      select, input[type="date"], input[type="text"] {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+      }
+      th, td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+      }
+      th {
+        background-color: #f5f5f5;
+        font-weight: bold;
+        position: sticky;
+        top: 0;
+      }
+      tr:hover {
+        background-color: #f9f9f9;
+      }
+      .status {
+        padding: 5px 10px;
+        border-radius: 4px;
+        font-weight: bold;
+      }
+      .status-pending {
+        background-color: #fff3cd;
+        color: #856404;
+      }
+      .status-approved {
+        background-color: #d4edda;
+        color: #155724;
+      }
+      .status-rejected {
+        background-color: #f8d7da;
+        color: #721c24;
+      }
+      .status-review {
+        background-color: #cce5ff;
+        color: #004085;
+      }
+      .export-btn {
+        background-color: #28a745;
+        color: white;
+        padding: 8px 16px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        float: right;
+        margin-bottom: 10px;
+      }
+      .export-btn:hover {
+        background-color: #218838;
+      }
+      .table-container {
+        max-height: 600px;
+        overflow-y: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Statistics Dashboard -->
+    <div class="dashboard">
+      <div class="stat-card">
+        <div class="stat-number"><?= stats.totalRequests ?></div>
+        <div class="stat-label">Total Requests</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number"><?= stats.pendingRequests ?></div>
+        <div class="stat-label">Pending Requests</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number"><?= stats.approvedRequests ?></div>
+        <div class="stat-label">Approved Requests</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number"><?= stats.rejectedRequests ?></div>
+        <div class="stat-label">Rejected Requests</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number"><?= stats.averageProcessingDays ?></div>
+        <div class="stat-label">Avg. Processing Days</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number"><?= stats.activeEmployees ?></div>
+        <div class="stat-label">Active Employees</div>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters">
+      <div class="filter-group">
+        <label for="employeeFilter">Employee:</label>
+        <input type="text" id="employeeFilter" placeholder="Search by email..." onkeyup="applyFilters()">
+      </div>
+      
+      <div class="filter-group">
+        <label for="managerFilter">Manager:</label>
+        <select id="managerFilter" onchange="applyFilters()">
+          <option value="">All Managers</option>
+          <? for (var i = 0; i < managers.length; i++) { ?>
+            <option value="<?= managers[i] ?>"><?= managers[i] ?></option>
+          <? } ?>
+        </select>
+      </div>
+      
+      <div class="filter-group">
+        <label for="statusFilter">Status:</label>
+        <select id="statusFilter" onchange="applyFilters()">
+          <option value="">All Statuses</option>
+          <option value="Pending">Pending</option>
+          <option value="In Review">In Review</option>
+          <option value="Approved">Approved</option>
+          <option value="Rejected">Rejected</option>
+        </select>
+      </div>
+      
+      <div class="filter-group">
+        <label for="startDate">From:</label>
+        <input type="date" id="startDate" onchange="applyFilters()">
+      </div>
+      
+      <div class="filter-group">
+        <label for="endDate">To:</label>
+        <input type="date" id="endDate" onchange="applyFilters()">
+      </div>
+    </div>
+
+    <!-- Export Button -->
+    <button class="export-btn" onclick="exportToCSV()">Export to CSV</button>
+
+    <!-- Requests Table -->
+    <div class="table-container">
+      <table id="requestsTable">
+        <thead>
+          <tr>
+            <th>Leave ID</th>
+            <th>Employee</th>
+            <th>Manager</th>
+            <th>Type</th>
+            <th>Start Date</th>
+            <th>End Date</th>
+            <th>Status</th>
+            <th>Submission Date</th>
+            <th>Decision Date</th>
+            <th>Comments</th>
+          </tr>
+        </thead>
+        <tbody>
+          <? for (var i = 1; i < requests.length; i++) { ?>
+            <tr>
+              <td><?= requests[i][0] ?></td>
+              <td><?= requests[i][1] ?></td>
+              <td><?= requests[i][3] ?></td>
+              <td><?= requests[i][4] ?></td>
+              <td><?= formatDate(requests[i][5]) ?></td>
+              <td><?= formatDate(requests[i][6]) ?></td>
+              <td>
+                <span class="status status-<?= getStatusClass(requests[i][9]) ?>">
+                  <?= requests[i][9] ?>
+                </span>
+              </td>
+              <td><?= formatDate(requests[i][8]) ?></td>
+              <td><?= formatDate(requests[i][11]) || '-' ?></td>
+              <td><?= requests[i][10] || '-' ?></td>
+            </tr>
+          <? } ?>
+        </tbody>
+      </table>
+    </div>
+
+    <script>
+      // Format date for display
+      function formatDate(date) {
+        if (!date) return '-';
+        return new Date(date).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        });
+      }
+      
+      // Get status class for styling
+      function getStatusClass(status) {
+        switch(status.toLowerCase()) {
+          case 'pending':
+            return 'pending';
+          case 'approved':
+            return 'approved';
+          case 'rejected':
+            return 'rejected';
+          case 'in review':
+            return 'review';
+          default:
+            return '';
+        }
+      }
+      
+      // Filter table rows based on selected criteria
+      function applyFilters() {
+        const employee = document.getElementById('employeeFilter').value.toLowerCase();
+        const manager = document.getElementById('managerFilter').value;
+        const status = document.getElementById('statusFilter').value;
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        
+        const table = document.getElementById('requestsTable');
+        const rows = table.getElementsByTagName('tr');
+        
+        // Skip header row
+        for (let i = 1; i < rows.length; i++) {
+          const row = rows[i];
+          const cells = row.getElementsByTagName('td');
+          
+          let showRow = true;
+          
+          // Employee filter (partial match)
+          if (employee && !cells[1].textContent.toLowerCase().includes(employee)) {
+            showRow = false;
+          }
+          
+          // Manager filter
+          if (manager && cells[2].textContent !== manager) {
+            showRow = false;
+          }
+          
+          // Status filter
+          if (status && cells[6].textContent.trim() !== status) {
+            showRow = false;
+          }
+          
+          // Date range filter
+          if (startDate || endDate) {
+            const rowStartDate = new Date(cells[4].textContent);
+            const rowEndDate = new Date(cells[5].textContent);
+            
+            if (startDate && rowStartDate < new Date(startDate)) {
+              showRow = false;
+            }
+            
+            if (endDate && rowEndDate > new Date(endDate)) {
+              showRow = false;
+            }
+          }
+          
+          row.style.display = showRow ? '' : 'none';
+        }
+      }
+      
+      // Export table data to CSV
+      function exportToCSV() {
+        const table = document.getElementById('requestsTable');
+        let csv = [];
+        
+        // Get headers
+        const headers = [];
+        const headerCells = table.rows[0].cells;
+        for (let i = 0; i < headerCells.length; i++) {
+          headers.push(headerCells[i].textContent);
+        }
+        csv.push(headers.join(','));
+        
+        // Get visible rows
+        for (let i = 1; i < table.rows.length; i++) {
+          const row = table.rows[i];
+          if (row.style.display !== 'none') {
+            const rowData = [];
+            const cells = row.cells;
+            
+            for (let j = 0; j < cells.length; j++) {
+              // Clean the cell data
+              let cellData = cells[j].textContent.trim();
+              // Handle commas and quotes in the data
+              if (cellData.includes(',') || cellData.includes('"')) {
+                cellData = `"${cellData.replace(/"/g, '""')}"`;
+              }
+              rowData.push(cellData);
+            }
+            
+            csv.push(rowData.join(','));
+          }
+        }
+        
+        // Download CSV file
+        const csvContent = csv.join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        
+        link.setAttribute('href', url);
+        link.setAttribute('download', 'leave_requests.csv');
+        link.style.visibility = 'hidden';
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+      
+      // Initialize date filters with current month
+      window.onload = function() {
+        const today = new Date();
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+        const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        
+        document.getElementById('startDate').value = firstDay.toISOString().split('T')[0];
+        document.getElementById('endDate').value = lastDay.toISOString().split('T')[0];
+        
+        applyFilters();
+      };
+    </script>
+  </body>
+</html>

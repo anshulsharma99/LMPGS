@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+      }
+      .card {
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 20px;
+        margin-bottom: 20px;
+      }
+      h2 {
+        margin-top: 0;
+        color: #333;
+      }
+      .form-group {
+        margin-bottom: 15px;
+      }
+      label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+      }
+      input[type="number"] {
+        width: 100px;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+      .btn {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: bold;
+        margin-right: 10px;
+      }
+      .btn-primary {
+        background-color: #007bff;
+        color: white;
+      }
+      .btn-warning {
+        background-color: #ffc107;
+        color: #000;
+      }
+      .btn-danger {
+        background-color: #dc3545;
+        color: white;
+      }
+      .btn:hover {
+        opacity: 0.9;
+      }
+      .success {
+        color: #28a745;
+        margin-top: 10px;
+        display: none;
+      }
+      .error {
+        color: #dc3545;
+        margin-top: 10px;
+        display: none;
+      }
+      .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.5);
+      }
+      .modal-content {
+        background-color: white;
+        margin: 15% auto;
+        padding: 20px;
+        width: 50%;
+        border-radius: 5px;
+      }
+      .close {
+        float: right;
+        cursor: pointer;
+        font-size: 24px;
+      }
+      .close:hover {
+        color: #666;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Leave Types Management -->
+    <div class="card">
+      <h2>Leave Types Management</h2>
+      <table id="leaveTypesTable">
+        <thead>
+          <tr>
+            <th>Type ID</th>
+            <th>Name</th>
+            <th>Description</th>
+            <th>Max Days</th>
+            <th>Requires Approval</th>
+            <th>Applicable Roles</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <? for (var i = 1; i < leaveTypes.length; i++) { ?>
+            <tr>
+              <td><?= leaveTypes[i][0] ?></td>
+              <td><?= leaveTypes[i][1] ?></td>
+              <td><?= leaveTypes[i][2] ?></td>
+              <td><?= leaveTypes[i][3] ?></td>
+              <td><?= leaveTypes[i][4] ? 'Yes' : 'No' ?></td>
+              <td><?= leaveTypes[i][5] ?></td>
+              <td>
+                <button class="btn btn-warning" onclick="editLeaveType(<?= i ?>)">Edit</button>
+                <button class="btn btn-danger" onclick="deleteLeaveType('<?= leaveTypes[i][0] ?>')">Delete</button>
+              </td>
+            </tr>
+          <? } ?>
+        </tbody>
+      </table>
+      <button class="btn btn-primary" onclick="showAddLeaveTypeModal()">Add Leave Type</button>
+    </div>
+
+    <!-- System Settings -->
+    <div class="card">
+      <h2>System Settings</h2>
+      <div class="form-group">
+        <label for="maxRequestDays">Maximum Request Days:</label>
+        <input type="number" id="maxRequestDays" min="1" value="<?= settings.maxRequestDays ?>">
+      </div>
+      <div class="form-group">
+        <label for="minAdvanceNotice">Minimum Advance Notice (days):</label>
+        <input type="number" id="minAdvanceNotice" min="0" value="<?= settings.minAdvanceNotice ?>">
+      </div>
+      <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+    </div>
+
+    <!-- Data Management -->
+    <div class="card">
+      <h2>Data Management</h2>
+      <button class="btn btn-warning" onclick="confirmArchiveOldRequests()">Archive Old Requests</button>
+      <button class="btn btn-danger" onclick="confirmResetSystem()">Reset System</button>
+    </div>
+
+    <!-- Leave Type Modal -->
+    <div id="leaveTypeModal" class="modal">
+      <div class="modal-content">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <h3 id="modalTitle">Add Leave Type</h3>
+        <form id="leaveTypeForm" onsubmit="handleLeaveTypeSubmit(event)">
+          <div class="form-group">
+            <label for="typeId">Type ID:</label>
+            <input type="text" id="typeId" required pattern="[A-Z]+" title="Only uppercase letters allowed">
+          </div>
+          
+          <div class="form-group">
+            <label for="typeName">Name:</label>
+            <input type="text" id="typeName" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="description">Description:</label>
+            <textarea id="description" rows="3" required></textarea>
+          </div>
+          
+          <div class="form-group">
+            <label for="maxDays">Maximum Days per Year:</label>
+            <input type="number" id="maxDays" min="1" required>
+          </div>
+          
+          <div class="form-group">
+            <label>
+              <input type="checkbox" id="requiresApproval" checked>
+              Requires Manager Approval
+            </label>
+          </div>
+          
+          <div class="form-group">
+            <label>Applicable Roles:</label>
+            <div>
+              <label>
+                <input type="checkbox" name="role" value="Admin"> Admin
+              </label>
+              <label>
+                <input type="checkbox" name="role" value="Manager"> Manager
+              </label>
+              <label>
+                <input type="checkbox" name="role" value="Employee"> Employee
+              </label>
+            </div>
+          </div>
+          
+          <div id="error" class="error"></div>
+          <div id="success" class="success"></div>
+          
+          <div class="modal-buttons">
+            <button type="button" class="btn btn-danger" onclick="closeModal()">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save</button>
+          </div>
+          
+          <input type="hidden" id="editIndex">
+        </form>
+      </div>
+    </div>
+
+    <script>
+      // Leave Type Management
+      function showAddLeaveTypeModal() {
+        document.getElementById('modalTitle').textContent = 'Add Leave Type';
+        document.getElementById('leaveTypeForm').reset();
+        document.getElementById('editIndex').value = '';
+        document.getElementById('typeId').disabled = false;
+        document.getElementById('leaveTypeModal').style.display = 'block';
+      }
+      
+      function editLeaveType(index) {
+        const leaveType = <?= JSON.stringify(leaveTypes) ?>[index];
+        document.getElementById('modalTitle').textContent = 'Edit Leave Type';
+        document.getElementById('typeId').value = leaveType[0];
+        document.getElementById('typeId').disabled = true;
+        document.getElementById('typeName').value = leaveType[1];
+        document.getElementById('description').value = leaveType[2];
+        document.getElementById('maxDays').value = leaveType[3];
+        document.getElementById('requiresApproval').checked = leaveType[4];
+        
+        const roles = leaveType[5].split(',').map(role => role.trim());
+        document.querySelectorAll('input[name="role"]').forEach(checkbox => {
+          checkbox.checked = roles.includes(checkbox.value);
+        });
+        
+        document.getElementById('editIndex').value = index;
+        document.getElementById('leaveTypeModal').style.display = 'block';
+      }
+      
+      function handleLeaveTypeSubmit(event) {
+        event.preventDefault();
+        
+        const roles = Array.from(document.querySelectorAll('input[name="role"]:checked'))
+          .map(cb => cb.value);
+          
+        if (roles.length === 0) {
+          showError('Please select at least one applicable role');
+          return;
+        }
+        
+        const formData = {
+          typeId: document.getElementById('typeId').value,
+          name: document.getElementById('typeName').value,
+          description: document.getElementById('description').value,
+          maxDays: document.getElementById('maxDays').value,
+          requiresApproval: document.getElementById('requiresApproval').checked,
+          roles: roles.join(','),
+          editIndex: document.getElementById('editIndex').value
+        };
+        
+        google.script.run
+          .withSuccessHandler(onSuccess)
+          .withFailureHandler(onFailure)
+          .processLeaveTypeUpdate(formData);
+      }
+      
+      function deleteLeaveType(typeId) {
+        if (confirm(`Are you sure you want to delete leave type ${typeId}?`)) {
+          google.script.run
+            .withSuccessHandler(onSuccess)
+            .withFailureHandler(onFailure)
+            .deleteLeaveType(typeId);
+        }
+      }
+      
+      // Settings Management
+      function saveSettings() {
+        const settings = {
+          maxRequestDays: document.getElementById('maxRequestDays').value,
+          minAdvanceNotice: document.getElementById('minAdvanceNotice').value
+        };
+        
+        google.script.run
+          .withSuccessHandler(onSettingsSaved)
+          .withFailureHandler(onFailure)
+          .saveSystemSettings(settings);
+      }
+      
+      function onSettingsSaved() {
+        showSuccess('Settings saved successfully');
+      }
+      
+      // Data Management
+      function confirmArchiveOldRequests() {
+        if (confirm('Are you sure you want to archive old leave requests? This will move all completed requests older than 6 months to an archive sheet.')) {
+          google.script.run
+            .withSuccessHandler(onSuccess)
+            .withFailureHandler(onFailure)
+            .archiveOldRequests();
+        }
+      }
+      
+      function confirmResetSystem() {
+        if (confirm('WARNING: This will delete all leave requests and reset the system to its initial state. This action cannot be undone. Are you sure you want to continue?')) {
+          google.script.run
+            .withSuccessHandler(onSuccess)
+            .withFailureHandler(onFailure)
+            .resetSystem();
+        }
+      }
+      
+      // UI Helpers
+      function closeModal() {
+        document.getElementById('leaveTypeModal').style.display = 'none';
+        document.getElementById('error').style.display = 'none';
+        document.getElementById('success').style.display = 'none';
+      }
+      
+      function showError(message) {
+        const error = document.getElementById('error');
+        error.textContent = message;
+        error.style.display = 'block';
+        document.getElementById('success').style.display = 'none';
+      }
+      
+      function showSuccess(message) {
+        const success = document.getElementById('success');
+        success.textContent = message;
+        success.style.display = 'block';
+        document.getElementById('error').style.display = 'none';
+      }
+      
+      function onSuccess(response) {
+        if (response.success) {
+          showSuccess(response.message);
+          setTimeout(() => {
+            google.script.host.close();
+          }, 1500);
+        } else {
+          showError(response.message);
+        }
+      }
+      
+      function onFailure(error) {
+        showError('An error occurred. Please try again.');
+      }
+      
+      // Close modal when clicking outside
+      window.onclick = function(event) {
+        const modal = document.getElementById('leaveTypeModal');
+        if (event.target == modal) {
+          closeModal();
+        }
+      }
+    </script>
+  </body>
+</html>

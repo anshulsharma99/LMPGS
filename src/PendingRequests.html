@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+      }
+      th, td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+      }
+      th {
+        background-color: #f5f5f5;
+        font-weight: bold;
+      }
+      tr:hover {
+        background-color: #f9f9f9;
+      }
+      .action-buttons {
+        display: flex;
+        gap: 10px;
+      }
+      .btn {
+        padding: 6px 12px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: bold;
+      }
+      .btn-approve {
+        background-color: #28a745;
+        color: white;
+      }
+      .btn-reject {
+        background-color: #dc3545;
+        color: white;
+      }
+      .btn:hover {
+        opacity: 0.9;
+      }
+      .no-requests {
+        text-align: center;
+        padding: 20px;
+        color: #666;
+        font-style: italic;
+      }
+      .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.5);
+      }
+      .modal-content {
+        background-color: white;
+        margin: 15% auto;
+        padding: 20px;
+        width: 50%;
+        border-radius: 5px;
+      }
+      .close {
+        float: right;
+        cursor: pointer;
+        font-size: 24px;
+      }
+      .close:hover {
+        color: #666;
+      }
+      textarea {
+        width: 100%;
+        padding: 8px;
+        margin: 10px 0;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        resize: vertical;
+      }
+      .modal-buttons {
+        text-align: right;
+        margin-top: 15px;
+      }
+    </style>
+  </head>
+  <body>
+    <? if (requests.length <= 1) { ?>
+      <div class="no-requests">No pending leave requests</div>
+    <? } else { ?>
+      <table>
+        <thead>
+          <tr>
+            <th>Leave ID</th>
+            <th>Employee</th>
+            <th>Type</th>
+            <th>Start Date</th>
+            <th>End Date</th>
+            <th>Reason</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <? for (var i = 1; i < requests.length; i++) { ?>
+            <tr>
+              <td><?= requests[i][0] ?></td>
+              <td><?= requests[i][1] ?></td>
+              <td><?= requests[i][4] ?></td>
+              <td><?= formatDate(requests[i][5]) ?></td>
+              <td><?= formatDate(requests[i][6]) ?></td>
+              <td><?= requests[i][7] ?></td>
+              <td>
+                <div class="action-buttons">
+                  <button class="btn btn-approve" onclick="showDecisionModal('<?= requests[i][0] ?>', 'Approved')">
+                    Approve
+                  </button>
+                  <button class="btn btn-reject" onclick="showDecisionModal('<?= requests[i][0] ?>', 'Rejected')">
+                    Reject
+                  </button>
+                </div>
+              </td>
+            </tr>
+          <? } ?>
+        </tbody>
+      </table>
+    <? } ?>
+
+    <!-- Decision Modal -->
+    <div id="decisionModal" class="modal">
+      <div class="modal-content">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <h3>Leave Request Decision</h3>
+        <p>Please provide a comment for your decision:</p>
+        <textarea id="comment" rows="4" placeholder="Enter your comment here..."></textarea>
+        <input type="hidden" id="leaveId">
+        <input type="hidden" id="decision">
+        <div class="modal-buttons">
+          <button class="btn btn-reject" onclick="closeModal()">Cancel</button>
+          <button class="btn btn-approve" onclick="submitDecision()">Confirm</button>
+        </div>
+      </div>
+    </div>
+    
+    <script>
+      function formatDate(date) {
+        if (!date) return '-';
+        return new Date(date).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        });
+      }
+      
+      function showDecisionModal(leaveId, decision) {
+        document.getElementById('leaveId').value = leaveId;
+        document.getElementById('decision').value = decision;
+        document.getElementById('comment').value = '';
+        document.getElementById('decisionModal').style.display = 'block';
+      }
+      
+      function closeModal() {
+        document.getElementById('decisionModal').style.display = 'none';
+      }
+      
+      function submitDecision() {
+        const leaveId = document.getElementById('leaveId').value;
+        const decision = document.getElementById('decision').value;
+        const comment = document.getElementById('comment').value;
+        
+        if (!comment.trim()) {
+          alert('Please provide a comment for your decision.');
+          return;
+        }
+        
+        google.script.run
+          .withSuccessHandler(onSuccess)
+          .withFailureHandler(onFailure)
+          .processLeaveDecision(leaveId, decision, comment);
+      }
+      
+      function onSuccess(response) {
+        if (response.success) {
+          alert(response.message);
+          google.script.host.close();
+        } else {
+          alert('Error: ' + response.message);
+        }
+      }
+      
+      function onFailure(error) {
+        alert('An error occurred while processing the decision. Please try again.');
+      }
+      
+      // Close modal when clicking outside
+      window.onclick = function(event) {
+        const modal = document.getElementById('decisionModal');
+        if (event.target == modal) {
+          closeModal();
+        }
+      }
+    </script>
+  </body>
+</html>
